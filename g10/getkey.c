@@ -3444,6 +3444,26 @@ finish_lookup (kbnode_t keyblock, unsigned int req_usage, int want_exact,
       kbnode_t nextk;
       int n_subkeys = 0;
       int n_revoked_or_expired = 0;
+      struct agent_card_info_s card_info;
+      gpg_error_t card_err = 0;
+      int pk_card = 0;
+      int latest_key_card = 0;
+      char fpr[MAX_FINGERPRINT_LEN];
+      if (!foundk)
+          {
+              /* Check if a card is available.  If any, use the key as a hint.  */
+              char *serialno;
+              memset (&card_info, 0, sizeof(card_info));
+              card_err = agent_scd_serialno (&serialno, NULL);
+              if (!card_err)
+                {
+                  xfree (serialno);
+                  card_err = agent_scd_getattr ("KEY-FPR", &card_info);
+                  if (card_err)
+                    log_error ("error retrieving key fingerprint from card: %s\n",
+                            gpg_strerror (card_err));
+                }
+          }
 
       /* Either start a loop or check just this one subkey.  */
       for (k = foundk ? foundk : keyblock; k; k = nextk)
@@ -3514,10 +3534,17 @@ finish_lookup (kbnode_t keyblock, unsigned int req_usage, int want_exact,
 	     that it is used.  A better change would be to compare
 	     ">=" but that might also change the selected keys and
 	     is as such a more intrusive change.  */
-	  if (pk->timestamp > latest_date || (!pk->timestamp && !latest_date))
+          fingerprint_from_pk(pk, fpr, NULL);
+          if (!(foundk || card_err))
+              pk_card = (card_info.fpr1valid && !strncmp(card_info.fpr1, fpr, MAX_FINGERPRINT_LEN))
+                  || (card_info.fpr2valid && !strncmp(card_info.fpr2, fpr, MAX_FINGERPRINT_LEN))
+                  || (card_info.fpr3valid && !strncmp(card_info.fpr3, fpr, MAX_FINGERPRINT_LEN));
+          if ((pk->timestamp > latest_date || (!pk->timestamp && !latest_date))
+                  && (pk_card || !latest_key_card))
 	    {
 	      latest_date = pk->timestamp;
 	      latest_key = k;
+	      latest_key_card = pk_card;
 	    }
 	}
       if (n_subkeys == n_revoked_or_expired && r_flags)

@@ -621,6 +621,14 @@ agent_scd_getattr (const char *name, struct agent_card_info_s *info)
   (void)info;
   return 0;
 }
+
+int
+agent_scd_serialno (char **r_serialno, const char *demand)
+{
+  (void)r_serialno;
+  (void)demand;
+  return 0;
+}
 #endif /* ENABLE_CARD_SUPPORT */
 
 /* We do not do any locking, so use these stubs here */
