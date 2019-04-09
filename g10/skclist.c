@@ -129,27 +129,12 @@ build_sk_list (ctrl_t ctrl,
 
   if (!locusr) /* No user ids given - use the card key or the default key.  */
     {
-      struct agent_card_info_s info;
       PKT_public_key *pk;
-      char *serialno;
 
-      memset (&info, 0, sizeof(info));
       pk = xmalloc_clear (sizeof *pk);
       pk->req_usage = use;
 
-      /* Check if a card is available.  If any, use the key as a hint.  */
-      err = agent_scd_serialno (&serialno, NULL);
-      if (!err)
-        {
-          xfree (serialno);
-          err = agent_scd_getattr ("KEY-FPR", &info);
-          if (err)
-            log_error ("error retrieving key fingerprint from card: %s\n",
-                       gpg_strerror (err));
-        }
-
-      err = get_seckey_default_or_card (ctrl, pk,
-                                        info.fpr1valid? info.fpr1 : NULL, 20);
+      err = get_seckey_default (ctrl, pk);
       if (err)
 	{
 	  free_public_key (pk);
